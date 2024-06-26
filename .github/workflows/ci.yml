@@ -1,63 +1,70 @@
 name: CI Pipeline
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+on: [push, pull_request]
 
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
+
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16.13'
-      - run: node --version
-      - run: npm install
-      - run: |
-          # Install ESLint if not already installed globally or locally
-          npm install eslint --save-dev
-          # Initialize ESLint configuration if not already done
-          if [ ! -f .eslintrc.js ] && [ ! -f .eslintrc.json ] && [ ! -f .eslintrc.yaml ] && [ ! -f .eslintrc.yml ] && [ ! -f .eslintrc ]; then
-            npx eslint --init
-          fi
-          # Run linting
-          npm run lint
+          node-version: '14'
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Run ESLint
+        run: yarn lint
 
   test:
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
+
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16.13'
-      - run: node --version
-      - run: npm install
-      - run: npm test
+          node-version: '14'
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Set up .env file
+        run: |
+          cp .env.test .env
+
+      - name: Run tests
+        run: yarn test
 
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
+
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16.13'
-      - run: node --version
-      - run: npm install
-      - run: npm run build
-      - name: Verify Docker Build
-        run: docker build -t sample-node-dev .
+          node-version: '14'
 
-  tag:
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Build project
+        run: yarn build
+
+  docker-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Bump version and push tag
-        uses: anothrnick/github-tag-action@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build Docker image
+        run: docker build -t sample-node-dev .
