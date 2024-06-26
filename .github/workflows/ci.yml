@@ -26,11 +26,14 @@ jobs:
         options: >-
           --health-cmd "pg_isready"
           --health-interval 10s
-          --health-timeout 5s
+          --health-timeout 30s  # Increase timeout to 30 seconds
           --health-retries 5
     steps:
       - name: Wait for PostgreSQL to start
-        run: sleep 20  # Adjust timing based on your environment's startup time
+        run: |
+          retries=0
+          until docker inspect -f '{{.State.Health.Status}}' 2be4586acab4c4ab80b3e56478b9e8c4f36030a106ab5d1bd2907bec177e9e24 | grep -q 'healthy' || (( retries++ >= 30 ))
+          sleep 10
 
       - name: Set up .env file
         run: |
