@@ -17,7 +17,15 @@ jobs:
           node-version: '16.13'
       - run: node --version
       - run: npm install
-      - run: npm run lint
+      - run: |
+          # Install ESLint if not already installed globally or locally
+          npm install eslint --save-dev
+          # Initialize ESLint configuration if not already done
+          if [ ! -f .eslintrc.js ] && [ ! -f .eslintrc.json ] && [ ! -f .eslintrc.yaml ] && [ ! -f .eslintrc.yml ] && [ ! -f .eslintrc ]; then
+            npx eslint --init
+          fi
+          # Run linting
+          npm run lint
 
   test:
     runs-on: ubuntu-latest
