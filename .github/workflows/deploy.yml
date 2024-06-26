@@ -1,0 +1,30 @@
+name: Deployment Pipeline
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+      - run: npm install
+      - run: npm run build
+      - name: Deploy to Production
+        run: echo "Deploying to production..."
+        # Add your deployment script/command here
+
+  rollback:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.rollback == 'true'
+    steps:
+      - name: Rollback Deployment
+        run: echo "Rolling back deployment..."
+        # Add your rollback script/command here
