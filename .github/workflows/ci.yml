@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: Node.js CI
 
 on:
   push:
@@ -9,10 +9,9 @@ on:
       - main
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
-    env:
-      NODE_ENV: test
+
     services:
       postgres:
         image: postgres:14
@@ -22,11 +21,8 @@ jobs:
           POSTGRES_DB: mydb
         ports:
           - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -34,34 +30,36 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16'
+          node-version: '14'
 
       - name: Install dependencies
-        run: yarn install
+        run: npm install
 
-      - name: Set up .env file
-        run: |
-          echo "PORT=3000" > .env
-          echo "HOST=localhost" >> .env
-          echo "POSTGRES_DB_CONNECTION_URL=postgres://myuser:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/mydb" >> .env
-          echo "AUTH_ACCESS_TOKEN_SECRET=7d5592eaa2a67bbb11cd78c536b0c65d23f5c2f6e94d72c86d08c3da38fda109" >> .env
-          echo "AUTH_REFRESH_TOKEN_SECRET=7d5592eaa2a67bbb11cd78c536b0c65d23f5c2f6e94d72c86d08c3da38fda109" >> .env
-          echo "AUTH_ACCESS_TOKEN_DURATION=300000" >> .env
-          echo "AUTH_REFRESH_TOKEN_DURATION=86400000" >> .env
-          cp .env .env.test  # Copy .env to .env.test for testing environment
-
-      - name: Print out environment variables
-        run: |
-          echo "Environment variables:"
-          cat .env
-
-      - name: Wait for PostgreSQL to be ready
-        run: |
-          until psql -h localhost -U myuser -d mydb -c "select 1"; do
-            >&2 echo "Postgres is unavailable - sleeping"
-            sleep 1
-          done
-          >&2 echo "Postgres is up!"
+      - name: Run linter
+        run: npm run lint
 
       - name: Run tests
-        run: yarn test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Wait for PostgreSQL to be ready
+        run: dockerize -wait tcp://localhost:5432 -timeout 1m
+
+      - name: Database setup
+        run: |
+          npm run db:migrate
+          npm run db:seed
+
+      - name: Run integration tests
+        env:
+          POSTGRES_DB_CONNECTION_URL: postgres://myuser:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/mydb
+          AUTH_ACCESS_TOKEN_SECRET: ${{ secrets.AUTH_ACCESS_TOKEN_SECRET }}
+          AUTH_REFRESH_TOKEN_SECRET: ${{ secrets.AUTH_REFRESH_TOKEN_SECRET }}
+        run: npm run test:integration
+
+    env:
+      POSTGRES_DB_CONNECTION_URL: postgres://myuser:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/mydb
+      AUTH_ACCESS_TOKEN_SECRET: ${{ secrets.AUTH_ACCESS_TOKEN_SECRET }}
+      AUTH_REFRESH_TOKEN_SECRET: ${{ secrets.AUTH_REFRESH_TOKEN_SECRET }}
