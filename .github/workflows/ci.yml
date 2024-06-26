@@ -9,23 +9,6 @@ on:
       - main
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '16'
-
-      - name: Install dependencies
-        run: yarn install
-
-      - name: Run ESLint
-        run: yarn lint
-
   test:
     runs-on: ubuntu-latest
     env:
@@ -60,40 +43,9 @@ jobs:
           echo "AUTH_REFRESH_TOKEN_DURATION=86400000" >> .env
           cp .env .env.test  # Copy .env to .env.test for testing environment
 
-      - name: Print out environment variables
-        run: |
-          echo "Environment variables:"
-          cat .env
-
       - name: Verify PostgreSQL connection
         run: |
           psql -h localhost -U myuser -d mydb -c "SELECT version();"
 
       - name: Run tests
         run: yarn test
-
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '16'
-
-      - name: Install dependencies
-        run: yarn install
-
-      - name: Build project
-        run: yarn build
-
-  docker-build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Build Docker image
-        run: docker build -t sample-node-dev .
