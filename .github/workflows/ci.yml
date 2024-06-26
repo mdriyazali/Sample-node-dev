@@ -1,6 +1,12 @@
 name: CI Pipeline
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   lint:
@@ -36,9 +42,28 @@ jobs:
       - name: Install dependencies
         run: yarn install
 
+      - name: Start PostgreSQL service (if needed)
+        run: sudo service postgresql start
+
       - name: Set up .env file
         run: |
-          cp .env.test .env
+          echo "PORT=3000" > .env
+          echo "HOST=localhost" >> .env
+          echo "POSTGRES_DB_CONNECTION_URL=postgres://myuser:123@localhost:5432/mydb" >> .env
+          echo "AUTH_ACCESS_TOKEN_SECRET=7d5592eaa2a67bbb11cd78c536b0c65d23f5c2f6e94d72c86d08c3da38fda109" >> .env
+          echo "AUTH_REFRESH_TOKEN_SECRET=7d5592eaa2a67bbb11cd78c536b0c65d23f5c2f6e94d72c86d08c3da38fda109" >> .env
+          echo "AUTH_ACCESS_TOKEN_DURATION=300000" >> .env
+          echo "AUTH_REFRESH_TOKEN_DURATION=86400000" >> .env
+          cp .env .env.test  # Copy .env to .env.test for testing environment
+
+      - name: Print out environment variables
+        run: |
+          echo "Environment variables:"
+          cat .env
+
+      - name: Verify PostgreSQL connection
+        run: |
+          psql -h localhost -U myuser -d mydb -c "SELECT version();"
 
       - name: Run tests
         run: yarn test
