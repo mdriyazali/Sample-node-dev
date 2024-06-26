@@ -30,43 +30,55 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_ENV: test
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}  # Secret for PostgreSQL password
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: myuser
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: mydb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v2
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '16'
+        - name: Set up Node.js
+          uses: actions/setup-node@v2
+          with:
+            node-version: '16'
 
-      - name: Install dependencies
-        run: yarn install
+        - name: Install dependencies
+          run: yarn install
 
-      - name: Start PostgreSQL service (if needed)
-        run: sudo service postgresql start
+        - name: Set up .env file
+          run: |
+            echo "PORT=3000" > .env
+            echo "HOST=localhost" >> .env
+            echo "POSTGRES_DB_CONNECTION_URL=postgres://myuser:$PGPASSWORD@localhost:5432/mydb" >> .env
+            echo "AUTH_ACCESS_TOKEN_SECRET=7d5592eaa2a67bbb11cd78c536b0c65d23f5c2f6e94d72c86d08c3da38fda109" >> .env
+            echo "AUTH_REFRESH_TOKEN_SECRET=7d5592eaa2a67bbb11cd78c536b0c65d23f5c2f6e94d72c86d08c3da38fda109" >> .env
+            echo "AUTH_ACCESS_TOKEN_DURATION=300000" >> .env
+            echo "AUTH_REFRESH_TOKEN_DURATION=86400000" >> .env
+            cp .env .env.test  # Copy .env to .env.test for testing environment
 
-      - name: Set up .env file
-        run: |
-          echo "PORT=3000" > .env
-          echo "HOST=localhost" >> .env
-          echo "POSTGRES_DB_CONNECTION_URL=postgres://myuser:123@localhost:5432/mydb" >> .env
-          echo "AUTH_ACCESS_TOKEN_SECRET=7d5592eaa2a67bbb11cd78c536b0c65d23f5c2f6e94d72c86d08c3da38fda109" >> .env
-          echo "AUTH_REFRESH_TOKEN_SECRET=7d5592eaa2a67bbb11cd78c536b0c65d23f5c2f6e94d72c86d08c3da38fda109" >> .env
-          echo "AUTH_ACCESS_TOKEN_DURATION=300000" >> .env
-          echo "AUTH_REFRESH_TOKEN_DURATION=86400000" >> .env
-          cp .env .env.test  # Copy .env to .env.test for testing environment
+        - name: Print out environment variables
+          run: |
+            echo "Environment variables:"
+            cat .env
 
-      - name: Print out environment variables
-        run: |
-          echo "Environment variables:"
-          cat .env
+        - name: Verify PostgreSQL connection
+          run: |
+            psql -h localhost -U myuser -d mydb -c "SELECT version();"
 
-      - name: Verify PostgreSQL connection
-        run: |
-          psql -h localhost -U myuser -d mydb -c "SELECT version();"
-
-      - name: Run tests
-        run: yarn test
+        - name: Run tests
+          run: yarn test
 
   build:
     runs-on: ubuntu-latest
