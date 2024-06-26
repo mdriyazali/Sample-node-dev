@@ -52,3 +52,12 @@ jobs:
       - run: npm run build
       - name: Verify Docker Build
         run: docker build -t sample-node-dev .
+
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Bump version and push tag
+        uses: anothrnick/github-tag-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
