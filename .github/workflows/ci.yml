@@ -1,4 +1,4 @@
-name: Node.js CI
+name: Node.js CI/CD Pipeline
 
 on:
   push:
@@ -8,20 +8,12 @@ on:
     branches:
       - main
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+env:
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
 
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_USER: myuser
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: mydb
-        ports:
-          - 5432:5432
-        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -30,14 +22,43 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16.x'  # Update to Node.js 16.x or higher
+          node-version: '16.x'
 
-      - name: Install npm dependencies
+      - name: Install dependencies
         run: npm install
 
-      # Add other steps as per your requirements
+      - name: Linting
+        run: npm run lint
 
-    env:
-      POSTGRES_DB_CONNECTION_URL: postgres://myuser:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/mydb
-      AUTH_ACCESS_TOKEN_SECRET: ${{ secrets.AUTH_ACCESS_TOKEN_SECRET }}
-      AUTH_REFRESH_TOKEN_SECRET: ${{ secrets.AUTH_REFRESH_TOKEN_SECRET }}
+      - name: Testing
+        env:
+          NODE_ENV: test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  release:
+    runs-on: ubuntu-latest
+    needs: lint-test-build
+
+    steps:
+      - name: Tag and Release
+        id: tag-release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release ${{ github.run_number }}
+          draft: false
+          prerelease: false
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: release
+
+    steps:
+      - name: Deploy to Production
+        run: |
+          echo "Deployment script goes here..."
