@@ -6,8 +6,23 @@ on:
       - main
 
 jobs:
-  release:
+  cd:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:latest
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: myuser
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: mydb
+        options: >-
+          --health-cmd "pg_isready -U myuser -d mydb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -21,13 +36,54 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Update Prisma
+        run: |
+          npm install --save-dev prisma@latest
+          npm install @prisma/client@latest
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Wait for PostgreSQL
+        run: sleep 10
+
+      - name: Linting
+        run: npm run lint
+
+      - name: Testing
+        env:
+          NODE_ENV: test
+          POSTGRES_DB_CONNECTION_URL: postgres://myuser:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/mydb
+        run: npm test
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build
+
       - name: Tag and Release
         id: tag-release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}  # Using TOKEN instead of GITHUB_TOKEN
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
         with:
           tag_name: v${{ github.run_number }}
           release_name: Release ${{ github.run_number }}
           draft: false
           prerelease: false
+
+      - name: Deploy to Production
+        if: success() && github.ref == 'refs/heads/main'
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} << 'EOF'
+          cd /home/mdriyaz/sample-node-dev
+          git pull origin main
+          npm install
+          npm run build
+          pm2 restart all
+          EOF
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_USERNAME: ${{ secrets.SERVER_USERNAME }}
