@@ -13,7 +13,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      # Example: Build and test your application
+      
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
@@ -22,17 +22,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Example: Build your application
+      
       - name: Build
         run: npm run build
 
-      # Example: Deploy your application (adjust this as per your deployment process)
+     
       - name: Deploy to Production
         run: |
           echo "Deploying to production..."
         
 
-      # Example: Tag and Release the deployment
+      
       - name: Tag and Release
         id: tag-release
         uses: actions/create-release@v1
