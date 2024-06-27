@@ -1,0 +1,60 @@
+name: Deployment Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Example: Build and test your application
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14.x'  # Adjust as per your Node.js version
+
+      - name: Install dependencies
+        run: npm install
+
+      # Example: Build your application
+      - name: Build
+        run: npm run build
+
+      # Example: Deploy your application (adjust this as per your deployment process)
+      - name: Deploy to Production
+        run: |
+          echo "Deploying to production..."
+        
+
+      # Example: Tag and Release the deployment
+      - name: Tag and Release
+        id: tag-release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}  # Using TOKEN instead of GITHUB_TOKEN
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release ${{ github.run_number }}
+          draft: false
+          prerelease: false
+
+  rollback:
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: success()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Example: Rollback script
+      - name: Rollback to Previous Deployment
+        run: |
+          echo "Rolling back to previous deployment..."
+         
