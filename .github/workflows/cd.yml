@@ -1,16 +1,14 @@
-name: Node.js Continuous Delivery
+name: Node.js Continuous Deployment
 
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [published]
 
 env:
-  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
   GITHUB_TOKEN: ${{ secrets.TOKEN }}  # Assuming TOKEN is your GitHub token in secrets
 
 jobs:
-  release:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,47 +22,18 @@ jobs:
         with:
           node-version: '16.x'
 
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Update Prisma
-        run: |
-          npm install --save-dev prisma@latest
-          npm install @prisma/client@latest
-
-      - name: Apply Migrations
-        run: npx prisma migrate deploy
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Tag and Release
-        id: tag-release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ github.run_number }}
-          release_name: Release ${{ github.run_number }}
-          draft: false
-          prerelease: false
-
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-        with:
-          token: ${{ secrets.TOKEN }}
-
       - name: Deploy to Production
         run: |
-          echo "Deployment script goes here..."
           # Replace with your actual deployment commands
+          echo "Deploying version ${{ github.event.release.tag_name }} to production..."
+          # Example deployment command:
+          # ssh user@production-server 'bash -s' < deploy.sh
 
   rollback:
     runs-on: ubuntu-latest
+    needs: []
+
+    if: github.event_name == 'release' && github.event.action == 'deleted'
 
     steps:
       - name: Checkout code
@@ -72,7 +41,10 @@ jobs:
         with:
           token: ${{ secrets.TOKEN }}
 
-      - name: Rollback to Previous Deployment
+      - name: Rollback to Previous Version
         run: |
-          echo "Rollback script goes here..."
           # Replace with your rollback commands
+          echo "Rolling back to previous version..."
+          # Example rollback command:
+          # ssh user@production-server 'bash -s' < rollback.sh
+
