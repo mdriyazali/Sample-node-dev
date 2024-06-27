@@ -19,33 +19,42 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16' # Use the version you want, like '16.x'
+          node-version: '16'  
 
       - name: Install dependencies
         run: npm install
 
       - name: Lint code
-        run: npm run lint # Replace with your linting command
+        run: npm run lint
 
       - name: Run tests
-        run: npm test # Replace with your testing command
+        run: npm test
 
       - name: Build application
-        run: npm run build # Replace with your build command
+        run: npm run build
 
       - name: Tag and Release on GitHub
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }} # Replace with your GitHub PAT
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
         run: |
-          git config user.name "CI"
-          git config user.email "ci@example.com"
+          git config user.name "mdriyazali"
+          git config user.email "mdriyazali254362@gmail.com"
           VERSION=$(node -p "require('./package.json').version")
           git tag -a v${VERSION} -m "Release version ${VERSION}"
           git push origin v${VERSION}
 
-      - name: Deploy to Production
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: |
-          ssh user@your-server 'cd /path/to/your/app && git pull origin main && npm install && npm run build && pm2 restart app'
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Deploy to EC2 instance
+        run: |
+          ssh -o StrictHostKeyChecking=no mdriyaz@23.22.141.26 'cd /home/mdriyaz/sample-node-dev && git pull origin main && npm install && npm run build && pm2 restart app'
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
