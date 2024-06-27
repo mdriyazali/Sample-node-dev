@@ -10,6 +10,7 @@ on:
 
 env:
   POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  GITHUB_TOKEN: ${{ secrets.TOKEN }}  # Assuming TOKEN is your GitHub token in secrets
 
 jobs:
   lint-test-build:
@@ -33,6 +34,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.TOKEN }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v2
@@ -63,8 +66,7 @@ jobs:
         env:
           NODE_ENV: test
           POSTGRES_DB_CONNECTION_URL: postgres://myuser:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/mydb
-        run: |
-          npm test || true  # Skip failing tests and continue
+        run: npm test
 
       - name: Build
         run: npm run build
@@ -76,12 +78,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.TOKEN }}
 
       - name: Tag and Release
         id: tag-release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}  # Assuming TOKEN is your GitHub token in secrets
         with:
           tag_name: v${{ github.run_number }}
           release_name: Release ${{ github.run_number }}
@@ -95,6 +99,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.TOKEN }}
 
       - name: Deploy to Production
         run: |
