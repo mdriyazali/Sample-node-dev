@@ -10,7 +10,7 @@ on:
 
 env:
   POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-  GITHUB_TOKEN: ${{ secrets.TOKEN }}  # Assuming TOKEN is your GitHub token in secrets
+  GITHUB_TOKEN: ${{ secrets.TOKEN }}
 
 jobs:
   lint-test-build:
@@ -85,7 +85,7 @@ jobs:
         id: tag-release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}  # Assuming TOKEN is your GitHub token in secrets
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
         with:
           tag_name: v${{ github.run_number }}
           release_name: Release ${{ github.run_number }}
@@ -102,6 +102,20 @@ jobs:
         with:
           token: ${{ secrets.TOKEN }}
 
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
       - name: Deploy to Production
         run: |
-          echo "Deployment script goes here..."
+          ssh -o StrictHostKeyChecking=no ${USER}@${SERVER_IP} << 'EOF'
+          cd /home/mdriyaz/sample-node-dev  # Replace with the actual path to your project
+          git pull origin main
+          npm install
+          npm run build
+          pm2 restart all
+          EOF
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          USER: ${{ secrets.SERVER_USERNAME }}
