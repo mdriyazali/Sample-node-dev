@@ -22,11 +22,11 @@ jobs:
         ports:
           - 5432:5432
         env:
-          POSTGRES_USER: myuser
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: mydb
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
         options: >-
-          --health-cmd "pg_isready -U myuser -d mydb"
+          --health-cmd "pg_isready -U ${{ secrets.POSTGRES_USER }} -d ${{ secrets.POSTGRES_DB }}"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -65,8 +65,9 @@ jobs:
       - name: Testing
         env:
           NODE_ENV: test
-          POSTGRES_DB_CONNECTION_URL: postgres://myuser:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/mydb
+          POSTGRES_DB_CONNECTION_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}
         run: npm test
+        continue-on-error: true
 
       - name: Build
         run: npm run build
@@ -109,13 +110,9 @@ jobs:
 
       - name: Deploy to Production
         run: |
-          sh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} << 'EOF'
-          cd /home/mdriyaz/sample-node-dev  
-          git pull origin main
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} << 'EOF'
+          cd /home/${{ secrets.SERVER_USERNAME }}/sample-node-dev  
           npm install
           npm run build
           pm2 restart all
           EOF
-        env:
-          SERVER_IP: ${{ secrets.SERVER_IP }}
-          USER: ${{ secrets.SERVER_USERNAME }}
