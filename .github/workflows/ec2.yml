@@ -1,34 +1,51 @@
-name: Deploy to EC2
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
-      - main  # Adjust to your main branch
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install SSH Client
-        run: sudo apt-get install -y openssh-client
-
-      - name: Set up SSH key
-        uses: webfactory/ssh-agent@v0.5.4
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          node-version: '16' # Use the version you want, like '16.x'
 
-      - name: Deploy application to EC2
-        run: |
-          scp -i ${{ secrets.SSH_PRIVATE_KEY }} -r ./path/to/your/application mdriyaz@23.22.141.26:/path/on/ec2
+      - name: Install dependencies
+        run: npm install
 
-      - name: SSH into EC2 and restart application
+      - name: Lint code
+        run: npm run lint # Replace with your linting command
+
+      - name: Run tests
+        run: npm test # Replace with your testing command
+
+      - name: Build application
+        run: npm run build # Replace with your build command
+
+      - name: Tag and Release on GitHub
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }} # Replace with your GitHub PAT
         run: |
-          ssh -i ${{ secrets.SSH_PRIVATE_KEY }} mdriyaz@23.22.141.26 'bash -s' << 'EOF'
-            cd /path/on/ec2
-            # Commands to stop, update, and restart your application
-            pm2 restart your-app-name  # Example for PM2
-          EOF
+          git config user.name "CI"
+          git config user.email "ci@example.com"
+          VERSION=$(node -p "require('./package.json').version")
+          git tag -a v${VERSION} -m "Release version ${VERSION}"
+          git push origin v${VERSION}
+
+      - name: Deploy to Production
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          ssh user@your-server 'cd /path/to/your/app && git pull origin main && npm install && npm run build && pm2 restart app'
+
