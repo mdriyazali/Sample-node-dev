@@ -42,6 +42,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Update Prisma
+        run: |
+          npm install --save-dev prisma@latest
+          npm install @prisma/client@latest
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
       - name: Wait for PostgreSQL
         run: sleep 10
 
@@ -81,6 +92,9 @@ jobs:
     needs: release
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
       - name: Deploy to Production
         run: |
           echo "Deployment script goes here..."
