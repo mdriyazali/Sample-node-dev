@@ -56,8 +56,12 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
 
-      - name: Wait for PostgreSQL
-        run: sleep 10
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          until pg_isready -h localhost -p 5432 -U myuser -d mydb; do
+            echo "Waiting for PostgreSQL..."
+            sleep 5
+          done
 
       - name: Linting
         run: npm run lint
@@ -111,7 +115,10 @@ jobs:
       - name: Deploy to Production
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} << 'EOF'
-          cd /home/mdriyaz/sample-node-dev  
+          if [ ! -d "/home/${{ secrets.SERVER_USERNAME }}/Sample-node-dev" ]; then
+            git clone https://github.com/mdriyazali/Sample-node-dev.git /home/${{ secrets.SERVER_USERNAME }}/Sample-node-dev
+          fi
+          cd /home/${{ secrets.SERVER_USERNAME }}/Sample-node-dev
           git pull origin main
           npm install
           npm run build
