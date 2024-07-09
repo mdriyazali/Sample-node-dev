@@ -115,6 +115,16 @@ jobs:
       - name: Deploy to Production
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} << 'EOF'
+          # Ensure npm and pm2 are installed
+          if ! command -v npm &> /dev/null; then
+            curl -sL https://deb.nodesource.com/setup_16.x | bash -
+            apt-get install -y nodejs
+          fi
+
+          if ! command -v pm2 &> /dev/null; then
+            npm install -g pm2
+          fi
+
           
           if [ ! -d "/home/${{ secrets.SERVER_USERNAME }}/Sample-node-dev" ]; then
             mkdir -p /home/${{ secrets.SERVER_USERNAME }}/Sample-node-dev
@@ -122,24 +132,17 @@ jobs:
           fi
           cd /home/${{ secrets.SERVER_USERNAME }}/Sample-node-dev
 
-          
-          if ! command -v npm &> /dev/null; then
-            curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
-            sudo apt-get install -y nodejs
+          # Pull the latest changes from the repository
+          if [ ! -d ".git" ]; then
+            git clone https://github.com/mdriyazali/Sample-node-dev.git .
+          else
+            git pull origin main
           fi
 
-          if ! command -v pm2 &> /dev/null; then
-            sudo npm install -g pm2
-          fi
-
-          
-          git pull origin main
-
-          
           npm install
           npm run build
 
-          
+         
           pm2 restart all
           EOF
         env:
