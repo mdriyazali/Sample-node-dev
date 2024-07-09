@@ -115,13 +115,31 @@ jobs:
       - name: Deploy to Production
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_IP }} << 'EOF'
+          
           if [ ! -d "/home/${{ secrets.SERVER_USERNAME }}/Sample-node-dev" ]; then
-            git clone https://github.com/mdriyazali/Sample-node-dev.git /home/${{ secrets.SERVER_USERNAME }}/Sample-node-dev
+            mkdir -p /home/${{ secrets.SERVER_USERNAME }}/Sample-node-dev
+            chown ${{ secrets.SERVER_USERNAME }} /home/${{ secrets.SERVER_USERNAME }}/Sample-node-dev
           fi
           cd /home/${{ secrets.SERVER_USERNAME }}/Sample-node-dev
+
+          
+          if ! command -v npm &> /dev/null; then
+            curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+          fi
+
+          if ! command -v pm2 &> /dev/null; then
+            sudo npm install -g pm2
+          fi
+
+          
           git pull origin main
+
+          
           npm install
           npm run build
+
+          
           pm2 restart all
           EOF
         env:
